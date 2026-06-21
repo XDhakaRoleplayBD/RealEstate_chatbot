@@ -1,0 +1,5 @@
+Django==6.0.5
+gunicorn
+requests
+whitenoise
+psycopg2-binary
