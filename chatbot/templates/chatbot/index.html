@@ -109,83 +109,214 @@
             color: white;
         }
 
-        /* MOBILE RESPONSIVE */
-        @media (max-width: 600px) {
-            .chat-container {
-                height: 100vh;
-                border-radius: 0;
+
+        @media (max-width:600px){
+
+            .chat-container{
+                height:100vh;
+                border-radius:0;
             }
+
         }
+
     </style>
+
 </head>
+
 
 <body>
 
+
 <div class="chat-container">
+
 
     <div class="header">
         🏠 Real Estate AI Chatbot
     </div>
 
+
     <div id="chat-box" class="chat-box"></div>
 
+
+
     <div class="input-box">
-        <input type="text" id="message" placeholder="Type your message...">
+
+
+        <input type="text" id="message" placeholder="Type or speak...">
+
 
         <button class="voice-btn" onclick="startVoice()">🎤</button>
+
+
         <button class="send-btn" onclick="sendMessage()">➤</button>
+
+
     </div>
+
+
 
 </div>
 
+
+
+
 <script>
-function addMessage(text, type) {
-    let div = document.createElement("div");
-    div.className = "msg " + type;
-    div.innerText = text;
+
+
+function addMessage(text,type){
+
+
+    let div=document.createElement("div");
+
+
+    div.className="msg "+type;
+
+
+    div.innerText=text;
+
+
     document.getElementById("chat-box").appendChild(div);
 
-    // auto scroll
+
+
     document.getElementById("chat-box").scrollTop =
-        document.getElementById("chat-box").scrollHeight;
+    document.getElementById("chat-box").scrollHeight;
+
+
 }
 
-function sendMessage() {
-    let input = document.getElementById("message");
-    let msg = input.value.trim();
-    if (!msg) return;
 
-    addMessage(msg, "user");
 
-    fetch("/chat/?message=" + encodeURIComponent(msg))
-    .then(res => res.json())
-    .then(data => {
-        addMessage(data.reply, "bot");
+
+
+function sendMessage(){
+
+
+    let input=document.getElementById("message");
+
+
+    let msg=input.value.trim();
+
+
+
+    if(!msg) return;
+
+
+
+    addMessage(msg,"user");
+
+
+
+    fetch("/chat/?message="+encodeURIComponent(msg))
+
+
+    .then(res=>res.json())
+
+
+    .then(data=>{
+
+
+        addMessage(data.reply,"bot");
+
+
     });
 
-    input.value = "";
+
+
+    input.value="";
+
 }
 
-// ENTER key support
-document.getElementById("message").addEventListener("keypress", function(e){
-    if (e.key === "Enter") {
+
+
+
+
+document.getElementById("message").addEventListener("keypress",function(e){
+
+
+    if(e.key==="Enter"){
+
+
         sendMessage();
+
     }
+
+
 });
 
-// Voice to text
-function startVoice() {
-    let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = "en-US";
 
-    recognition.onresult = function(event) {
-        document.getElementById("message").value =
-            event.results[0][0].transcript;
+
+
+
+
+
+// Voice Input (Bangla + English)
+
+function startVoice(){
+
+
+
+    let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+
+
+    // Bangla + English support
+
+    recognition.lang = "bn-BD";
+
+
+
+    recognition.continuous = false;
+
+
+
+    recognition.interimResults = false;
+
+
+
+
+
+    recognition.onresult=function(event){
+
+
+
+        let voiceText = event.results[0][0].transcript;
+
+
+
+        document.getElementById("message").value = voiceText;
+
+
+
     };
 
+
+
+
+
+    recognition.onerror=function(event){
+
+
+        alert("Voice error: "+event.error);
+
+
+    };
+
+
+
+
+
     recognition.start();
+
+
 }
+
+
+
 </script>
 
+
+
 </body>
+
 </html>

@@ -3,3 +3,4 @@ gunicorn
 requests
 whitenoise
 psycopg2-binary
+deep-translator
