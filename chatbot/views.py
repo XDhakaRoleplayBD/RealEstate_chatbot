@@ -8,23 +8,17 @@ import json
 import re
 
 
-
 # ---------------- HOME ----------------
-
 def home(request):
     return JsonResponse({"msg": "Real Estate AI Running"})
 
 
-
 # ---------------- CHAT PAGE ----------------
-
 def chat_page(request):
     return render(request, "chatbot/index.html")
 
 
-
 # ---------------- BANGLA CHECK ----------------
-
 def is_bangla(text):
     for ch in text:
         if '\u0980' <= ch <= '\u09FF':
@@ -32,9 +26,7 @@ def is_bangla(text):
     return False
 
 
-
 # ---------------- TRANSLATE ----------------
-
 def translate_text(text):
     try:
         return GoogleTranslator(
@@ -45,9 +37,7 @@ def translate_text(text):
         return text.lower()
 
 
-
 # ---------------- GROK AI PARSER ----------------
-
 def parse_with_grok(message):
 
     url = "https://api.x.ai/v1/chat/completions"
@@ -63,10 +53,7 @@ def parse_with_grok(message):
             {
                 "role": "system",
                 "content": """
-You are a Real Estate AI extractor.
-
-Extract:
-location, bedrooms, price_max form messy user text
+Extract location, bedrooms, price_max from messy text.
 
 Return ONLY JSON:
 {
@@ -104,34 +91,27 @@ Return ONLY JSON:
     }
 
 
-
-# ---------------- SMART FIX ----------------
-
+# ---------------- SMART FIX (IMPROVED ONLY) ----------------
 def smart_fix(data, message):
 
     message = message.lower()
 
-    # LOCATION (DB DYNAMIC)
+    # LOCATION FIX (DB)
     if not data.get("location"):
         locations = Property.objects.values_list("location", flat=True).distinct()
 
         for loc in locations:
-            if str(loc).lower() in message:
+            if loc and str(loc).lower() in message:
                 data["location"] = loc
                 break
 
-    # BEDROOM
-    words = message.split()
-
+    # ROOM FIX (messy text)
     if not data.get("bedrooms"):
-        for i, w in enumerate(words):
-            if w.isdigit():
-                if i + 1 < len(words):
-                    if "room" in words[i + 1] or "bed" in words[i + 1]:
-                        data["bedrooms"] = int(w)
-                        break
+        match = re.search(r"(\d+)\s*(room|rooms|bed|bedroom|bedrooms)", message)
+        if match:
+            data["bedrooms"] = int(match.group(1))
 
-    # PRICE
+    # BUDGET FIX
     if not data.get("price_max"):
         nums = re.findall(r"\d+", message)
 
@@ -143,9 +123,7 @@ def smart_fix(data, message):
     return data
 
 
-
 # ---------------- APPLY FILTERS ----------------
-
 def apply_filters(filters):
 
     qs = Property.objects.all()
@@ -162,50 +140,43 @@ def apply_filters(filters):
     return qs
 
 
-
 # ---------------- CHAT RESPONSE ----------------
-
 def chat_response(request):
 
     message = request.GET.get("message", "").strip()
     lower = message.lower()
 
-    # ---------------- GREETING CHECK (NO TRANSLATE) ----------------
+    # ---------------- GREETING (BANGLA + ENGLISH) ----------------
     if any(x in lower for x in ["hi", "hello", "hey"]):
         return JsonResponse({
             "reply": "👋 আসসালামু আলাইকুম sir।\nআপনি location, room, budget বলুন।"
         }, json_dumps_params={"ensure_ascii": False})
 
-
-
-    # ---------------- TRANSLATE ONLY BANGLA ----------------
+    # ---------------- TRANSLATE ONLY IF BANGLA ----------------
     if is_bangla(message):
         message = translate_text(message)
-
-
 
     # ---------------- AI PARSE ----------------
     data = parse_with_grok(message)
 
-
-
     # ---------------- SMART FIX ----------------
     data = smart_fix(data, message)
 
-
+    # ---------------- VALIDATION (NEW ADD ONLY) ----------------
+    if not any([data.get("location"), data.get("bedrooms"), data.get("price_max")]):
+        return JsonResponse({
+            "reply": "❌ sir, দয়া করে valid location / room / budget দিন।"
+        }, json_dumps_params={"ensure_ascii": False})
 
     # ---------------- SEARCH ----------------
     results = apply_filters(data)
-
-
 
     if not results.exists():
         return JsonResponse({
             "reply": "❌ দুঃখিত sir, কোনো property পাওয়া যায়নি।"
         }, json_dumps_params={"ensure_ascii": False})
 
-
-
+    # ---------------- OUTPUT (BANGLA MAINTAINED) ----------------
     output = []
 
     for p in results[:10]:
@@ -217,8 +188,6 @@ def chat_response(request):
 💰 দাম: {p.price}
 🚗 পার্কিং: {p.parking}
 """)
-
-
 
     return JsonResponse({
         "reply": "আপনার চাহিদা অনুযায়ী পাওয়া গেছে:\n\n" + "\n".join(output)
